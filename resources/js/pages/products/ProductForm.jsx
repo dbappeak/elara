@@ -11,6 +11,7 @@ import { getAllActiveCategories } from "../../src/services/categoryService";
 import ProductFormFields from "./ProductFormFields";
 import usePageTitle from "../../hooks/usePageTitle";
 
+
 function ProductForm() {
     const { id } = useParams();
     usePageTitle(id ? "Edit Product" : "Add Product");
@@ -23,8 +24,11 @@ function ProductForm() {
         quantity: "",
         status: 1,
         category_id: "",
-        image: null,
+        image: [],
+        existing_images: [],
+        image_url: null,
     });
+    const [errors, setErrors] = useState({});
     
     const navigate = useNavigate();
 
@@ -41,7 +45,9 @@ function ProductForm() {
                     quantity: res.data.quantity || "",
                     status: res.data.status || 1,
                     category_id: res.data.category_id || "",
-                    image: null,
+                    image: [],
+                    existing_images: res.data.product_images.map(img => img.id),
+                    image_url: res.data.product_images || []
                 });
             });
         }
@@ -51,7 +57,13 @@ function ProductForm() {
         const { name, value, files } = e.target;
 
         if (files) {
-            setForm(prev => ({ ...prev, [name]: files[0] }));
+            const file = files[0];
+
+            setForm(prev => ({
+                ...prev,
+                image: file,
+                image_preview: URL.createObjectURL(file)
+            }));
         } else {
             setForm(prev => ({ ...prev, [name]: value }));
         }
@@ -61,28 +73,66 @@ function ProductForm() {
         e.preventDefault();
 
         const formData = new FormData();
-        Object.keys(form).forEach(key => {
-            if (form[key] !== null) {
-                formData.append(key, form[key]);
-            }
-        });
 
-        if (id) {
-            await updateProduct(id, formData);
-        } else {
-            await createProduct(formData);
+        formData.append("name", form.name);
+        formData.append("description", form.description);
+        formData.append("price", form.price);
+        formData.append("quantity", form.quantity);
+        formData.append("status", form.status);
+        formData.append("category_id", form.category_id);
+
+        /*
+        |--------------------------------------------------------------------------
+        | NEW IMAGES
+        |--------------------------------------------------------------------------
+        */
+
+        if (form.image && form.image.length > 0) {
+            form.image.forEach((file) => {
+                formData.append("images[]", file);
+            });
         }
 
-        navigate("/products");
+        /*
+        |--------------------------------------------------------------------------
+        | EXISTING IMAGES
+        |--------------------------------------------------------------------------
+        */
+
+        if (form.existing_images && form.existing_images.length > 0) {
+            form.existing_images.forEach((id) => {
+                formData.append("existing_images[]", id);
+            });
+        }
+
+        try{
+
+            setErrors({});
+
+            if (id) {
+                formData.append("_method", "PUT");
+                await updateProduct(id, formData);
+            } else {
+                await createProduct(formData);
+            }
+    
+            navigate("/products");
+        } catch (error) {
+            if (error.response.status === 422) {
+                setErrors(error.response.data.errors);
+            }
+        }
     };
 
     return (
         <ProductFormFields
             form={form}
+            setForm={setForm}
             handleChange={handleChange}
             onSubmit={handleSubmit}
             isEdit={!!id}
             categories={categories}
+            errors={errors}
         />
     );
 }

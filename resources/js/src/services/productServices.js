@@ -9,7 +9,11 @@ export const getProducts = (perPage = 10, page = 1) =>
     });
 export const getProduct = (id) => API.get(`/products/${id}`);
 export const createProduct = (data) => API.post("/products", data);
-export const updateProduct = (id, data) => API.put(`/products/${id}`, data);
+// export const updateProduct = (id, data) => API.put(`/products/${id}`, data);
+export const updateProduct = (id, data) => {
+    data.append("_method", "PUT");
+    return API.post(`/products/${id}`, data);
+};
 export const deleteProduct = (id) => API.delete(`/products/${id}`);
 
 export const updatedProductStatus = (id, status) => API.patch(`/product-status/${id}`, { status });

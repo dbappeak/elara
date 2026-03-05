@@ -1,13 +1,14 @@
-function ProductFormFields({ form, handleChange, onSubmit, isEdit, categories }) {
+import  ImageUpload  from "../../components/ImageUpload";
+function ProductFormFields({ form, setForm, handleChange, onSubmit, isEdit, categories, errors }) {
     return (
-        <div className="max-w-md bg-white shadow p-6 rounded-lg">
+        <div className="bg-white shadow p-6 rounded-lg w-full">
             <h2 className="text-xl font-bold mb-4">
                 {isEdit ? "Edit Product" : "Add Product"}
             </h2>
 
             <form onSubmit={onSubmit} className="space-y-4">
 
-                <div>
+                <div className="w-[50%]">
                     <label>Name</label>
                     <input
                         name="name"
@@ -15,6 +16,11 @@ function ProductFormFields({ form, handleChange, onSubmit, isEdit, categories })
                         value={form.name}
                         onChange={handleChange}
                     />
+                    {errors?.name && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {errors.name[0]}
+                        </p>
+                    )}
                 </div>
 
                 <div>
@@ -36,6 +42,11 @@ function ProductFormFields({ form, handleChange, onSubmit, isEdit, categories })
                         value={form.price}
                         onChange={handleChange}
                     />
+                    {errors?.price && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {errors.price[0]}
+                        </p>
+                    )}
                 </div>
 
                 <div>
@@ -47,6 +58,11 @@ function ProductFormFields({ form, handleChange, onSubmit, isEdit, categories })
                         value={form.quantity}
                         onChange={handleChange}
                     />
+                    {errors?.quantity && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {errors.quantity[0]}
+                        </p>
+                    )}
                 </div>
 
                 <div>
@@ -60,6 +76,11 @@ function ProductFormFields({ form, handleChange, onSubmit, isEdit, categories })
                         <option value="1">Active</option>
                         <option value="0">Inactive</option>
                     </select>
+                    {errors?.status && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {errors.status[0]}
+                        </p>
+                    )}
                 </div>
 
                 <div>
@@ -79,15 +100,16 @@ function ProductFormFields({ form, handleChange, onSubmit, isEdit, categories })
                     </select>
                 </div>
 
-                <div>
-                    <label>Image</label>
-                    <input
-                        type="file"
-                        name="image"
-                        className="w-full"
-                        onChange={handleChange}
-                    />
-                </div>
+                <ImageUpload 
+                    value={form.image_url}
+                    onChange={({ files, existingIds }) =>
+                        setForm(prev => ({
+                            ...prev,
+                            image: files,
+                            existing_images: existingIds
+                        }))
+                    }
+                />
 
                 <button
                     type="submit"
