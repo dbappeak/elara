@@ -9,6 +9,8 @@ use App\Models\Category;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\ApiResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class ProductController extends Controller
 {
@@ -17,13 +19,34 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $perPage = $request->input('per_page', 10);
+        $perPage = $request->per_page ?? 10;
 
-        $products = Product::with(['category', 'creator', 'updater'])
-            ->latest()
+        $products = Product::with('category')
+
+            ->when($request->search, function ($q) use ($request) {
+                $q->where('name', 'like', "%{$request->search}%");
+            })
+
+            ->when($request->category, function ($q) use ($request) {
+                $q->where('category_id', $request->category);
+            })
+
+            ->when($request->min_price, function ($q) use ($request) {
+                $q->where('price', '>=', $request->min_price);
+            })
+
+            ->when($request->max_price, function ($q) use ($request) {
+                $q->where('price', '<=', $request->max_price);
+            })
+
+            ->orderBy(
+                $request->sort_by ?? 'id',
+                $request->sort_dir ?? 'desc'
+            )
+
             ->paginate($perPage);
 
-        return response()->json($products);
+        return ApiResponse::success($products, "Products fetched successfully");
     }
 
     /**
@@ -32,7 +55,7 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:products,name',
             'price' => 'required|numeric|min:0',
             'description' => 'nullable|string',
             'quantity' => 'required|integer|min:0',
@@ -67,19 +90,20 @@ class ProductController extends Controller
 
             DB::commit();
 
-            return response()->json(
-                $product->load(['category','productImages']),
-                201
+            return ApiResponse::success(
+                $product->load(['category', 'productImages']),
+                "Product created successfully blah blah",
+                Response::HTTP_CREATED
             );
 
         } catch (\Exception $e) {
 
             DB::rollBack();
-
-            return response()->json([
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
-            ],500);
+            return ApiResponse::error(
+                null,
+                'Something went wrong: ' . $e->getMessage(),
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -95,7 +119,7 @@ class ProductController extends Controller
             return $img;
         });
 
-        return response()->json($product);
+        return ApiResponse::success($product, "Product retrieved successfully");
     }
 
     public function update_(Request $request, Product $product)
@@ -153,7 +177,7 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:products,name,' . $product->id,
             'price' => 'required|numeric|min:0',
             'description' => 'nullable|string',
             'quantity' => 'required|integer|min:0',
@@ -176,12 +200,6 @@ class ProductController extends Controller
 
             $product->update($validated);
 
-            /*
-            |--------------------------------------------------------------------------
-            | DELETE REMOVED IMAGES
-            |--------------------------------------------------------------------------
-            */
-
             $existingImageIds = $request->existing_images ?? [];
 
             $imagesToDelete = $product->productImages()
@@ -192,12 +210,6 @@ class ProductController extends Controller
                 Storage::disk('public')->delete($img->image);
                 $img->delete();
             }
-
-            /*
-            |--------------------------------------------------------------------------
-            | ADD NEW IMAGES
-            |--------------------------------------------------------------------------
-            */
 
             if ($request->hasFile('images')) {
 
@@ -213,18 +225,20 @@ class ProductController extends Controller
 
             DB::commit();
 
-            return response()->json(
-                $product->load(['category','productImages'])
+            return ApiResponse::success(
+                $product->load(['category', 'productImages']),
+                "Product updated successfully"
             );
 
         } catch (\Exception $e) {
 
             DB::rollBack();
 
-            return response()->json([
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
-            ],500);
+            return ApiResponse::error(
+                null,
+                'Something went wrong: ' . $e->getMessage(),
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -233,18 +247,18 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        foreach ($product->images as $image) {
+        if ($product->productImages()->count() > 0) {
+            foreach ($product->images as $image) {
 
-            Storage::disk('public')->delete($image->image);
+                Storage::disk('public')->delete($image->image);
 
-            $image->delete();
+                $image->delete();
+            }
         }
 
         $product->delete();
 
-        return response()->json([
-            'message' => 'Product deleted successfully'
-        ]);
+        return ApiResponse::success(null, "Product deleted successfully");
     }
 
     /**
@@ -261,9 +275,6 @@ class ProductController extends Controller
         $product->updated_by = 1; // Replace with auth()->id() later
         $product->save();
 
-        return response()->json([
-            'message' => 'Product status updated successfully',
-            'product' => $product
-        ]);
+        return ApiResponse::success($product, "Product status updated successfully");
     }
 }

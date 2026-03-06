@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Category;
 use Illuminate\Support\Str;
+use App\Helpers\ApiResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class CategoryController extends Controller
 {
@@ -16,7 +18,7 @@ class CategoryController extends Controller
     {
         $per_page = request()->input('per_page', 10);
         $categories = Category::latest()->paginate($per_page);
-        return response()->json($categories);
+        return ApiResponse::success($categories, "Categories retrieved successfully");
     }
 
     /**
@@ -32,7 +34,7 @@ class CategoryController extends Controller
 
         $validated['slug'] = Str::slug($validated['name']);
         $category = Category::create($validated);
-        return response()->json($category, 201);
+        return ApiResponse::success($category, "Category created successfully", Response::HTTP_CREATED);
     }
 
     /**
@@ -41,7 +43,7 @@ class CategoryController extends Controller
     public function show(string $id)
     {
         $category = Category::findOrFail($id);
-        return response()->json($category);
+        return ApiResponse::success($category, "Category retrieved successfully");
     }
 
     /**
@@ -59,7 +61,7 @@ class CategoryController extends Controller
         $validated['slug'] = Str::slug($validated['name']);
         $category->update($validated);
 
-        return response()->json($category);
+        return ApiResponse::success($category, "Category updated successfully");
     }
 
     /**
@@ -69,9 +71,7 @@ class CategoryController extends Controller
     {
         $category = Category::findOrFail($id);
         $category->delete();
-        return response()->json([
-            'message' => 'Category deleted successfully'
-        ]);
+        return ApiResponse::success(null, "Category deleted successfully");
     }
 
     // Route::patch('/categories/{id}/status', [CategoryController::class, 'updateStatus']);
@@ -85,12 +85,12 @@ class CategoryController extends Controller
         $category->status = $validated['status'];
         $category->save();
 
-        return response()->json($category);
+        return ApiResponse::success($category, "Category status updated successfully");
     }
 
     public function getAllCategories()
     {
         $categories = Category::where('status', 'active')->get();
-        return response()->json($categories);
+        return ApiResponse::success($categories, "Categories retrieved successfully");
     }
 }

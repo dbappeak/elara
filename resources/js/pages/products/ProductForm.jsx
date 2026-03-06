@@ -22,7 +22,7 @@ function ProductForm() {
         description: "",
         price: "",
         quantity: "",
-        status: 1,
+        status: "active",
         category_id: "",
         image: [],
         existing_images: [],
@@ -34,20 +34,20 @@ function ProductForm() {
 
     useEffect(() => {
         getAllActiveCategories().then(res => {
-            setCategories(res.data);
+            setCategories(res.data.data);
         });
         if (id) {
             getProduct(id).then(res => {
                 setForm({
-                    name: res.data.name || "",
-                    description: res.data.description || "",
-                    price: res.data.price || "",
-                    quantity: res.data.quantity || "",
-                    status: res.data.status || 1,
-                    category_id: res.data.category_id || "",
+                    name: res.data.data.name || "",
+                    description: res.data.data.description || "",
+                    price: res.data.data.price || "",
+                    quantity: res.data.data.quantity || "",
+                    status: res.data.data.status || null,
+                    category_id: res.data.data.category_id || "",
                     image: [],
-                    existing_images: res.data.product_images.map(img => img.id),
-                    image_url: res.data.product_images || []
+                    existing_images: res.data.data.product_images.map(img => img.id),
+                    image_url: res.data.data.product_images || []
                 });
             });
         }
@@ -81,23 +81,11 @@ function ProductForm() {
         formData.append("status", form.status);
         formData.append("category_id", form.category_id);
 
-        /*
-        |--------------------------------------------------------------------------
-        | NEW IMAGES
-        |--------------------------------------------------------------------------
-        */
-
         if (form.image && form.image.length > 0) {
             form.image.forEach((file) => {
                 formData.append("images[]", file);
             });
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | EXISTING IMAGES
-        |--------------------------------------------------------------------------
-        */
 
         if (form.existing_images && form.existing_images.length > 0) {
             form.existing_images.forEach((id) => {
@@ -105,20 +93,25 @@ function ProductForm() {
             });
         }
 
-        try{
+        try {
 
             setErrors({});
+            let res;
 
             if (id) {
                 formData.append("_method", "PUT");
-                await updateProduct(id, formData);
+                res = await updateProduct(id, formData);
             } else {
-                await createProduct(formData);
+                res = await createProduct(formData);
             }
-    
-            navigate("/products");
+
+            navigate("/products", {
+                state: { message: res.data.message }
+            });
+
         } catch (error) {
-            if (error.response.status === 422) {
+
+            if (error.response?.status === 422) {
                 setErrors(error.response.data.errors);
             }
         }
