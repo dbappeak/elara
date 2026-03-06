@@ -1,9 +1,10 @@
 import { useEffect, useState,  } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { getProducts, deleteProduct, updatedProductStatus } from "../../src/services/productServices";
+import { getProducts, deleteProduct, updatedProductStatus, exportProducts } from "../../src/services/productServices";
 import { getAllActiveCategories } from "../../src/services/categoryService";
 import DataTable from "react-data-table-component";
 import usePageTitle from "../../hooks/usePageTitle";
+import { API_ROUTES } from "../../src/config/constants";
 
 
 function ProductList() {
@@ -71,6 +72,44 @@ function ProductList() {
 
     const handlePerRowsChange = async (newPerPage, page) => {
         fetchProducts(page, newPerPage);
+    };
+
+    const handleExport = async () => {
+        const res = await exportProducts({
+            search,
+            category: categoryFilter,
+            min_price: minPrice,
+            max_price: maxPrice,
+            sort_by: sortBy,
+            sort_dir: sortDir,
+        });
+
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.setAttribute("download", "products.xlsx");
+        document.body.appendChild(link);
+        link.click();
+    };
+
+    const handleImport = async (e) => {
+        const file = e.target.files[0];
+
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            await importProducts(formData);
+
+            alert("Products imported successfully");
+
+            fetchProducts();
+        } catch (error) {
+            alert("Import failed");
+        }
     };
 
     const handleReset = () => {
@@ -146,13 +185,41 @@ function ProductList() {
         <div>
             <div className="flex justify-between mb-4">
                 <h2 className="text-2xl font-bold">Products</h2>
-            
-                <Link
-                    to="/products/create"
-                    className="bg-blue-600 text-white px-4 py-2 rounded"
-                >
-                    Add Product
-                </Link>
+
+                <div className="flex gap-2">
+
+                    <a
+                        href={API_ROUTES.PRODUCT_DEMO_SHEET}
+                        className="bg-orange-600 text-white px-4 py-2 rounded"
+                    >
+                        Download Demo Sheet
+                    </a>
+
+                    <label className="bg-yellow-500 text-white px-4 py-2 rounded cursor-pointer">
+                        Import Excel
+                        <input
+                            type="file"
+                            accept=".xlsx,.xls"
+                            onChange={handleImport}
+                            className="hidden"
+                        />
+                    </label>
+
+                    <button
+                        onClick={handleExport}
+                        className="bg-green-600 text-white px-4 py-2 rounded"
+                    >
+                        Export Excel
+                    </button>
+
+                    <Link
+                        to="/products/create"
+                        className="bg-blue-600 text-white px-4 py-2 rounded"
+                    >
+                        Add Product
+                    </Link>
+
+                </div>
             </div>
 
             {message && (

@@ -23,3 +23,18 @@ export const updateProduct = (id, data) => {
 export const deleteProduct = (id) => API.delete(`/products/${id}`);
 
 export const updatedProductStatus = (id, status) => API.patch(`/product-status/${id}`, { status });
+
+export const exportProducts = (filters) => {
+    return API.get("/product-export", {
+        params: filters,
+        responseType: "blob",
+    });
+};
+
+export const importProducts = (formData) => {
+    return API.post("/products/import", formData, {
+        headers: {
+            "Content-Type": "multipart/form-data",
+        },
+    });
+};

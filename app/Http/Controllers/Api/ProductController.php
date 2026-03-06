@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\ApiResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ProductsExport;
 
 class ProductController extends Controller
 {
@@ -122,58 +124,6 @@ class ProductController extends Controller
         return ApiResponse::success($product, "Product retrieved successfully");
     }
 
-    public function update_(Request $request, Product $product)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'description' => 'nullable|string',
-            'quantity' => 'required|integer|min:0',
-            'category_id' => 'nullable|exists:categories,id',
-            'status' => 'required|in:active,inactive',
-
-            'images' => 'nullable|array',
-            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048'
-        ]);
-
-        DB::beginTransaction();
-
-        try {
-
-            $validated['slug'] = Str::slug($validated['name']);
-            $validated['updated_by'] = 1;
-
-            $product->update($validated);
-
-            if ($request->hasFile('images')) {
-
-                foreach ($request->file('images') as $image) {
-
-                    $path = $image->store('products', 'public');
-
-                    $product->productImages()->create([
-                        'image' => $path
-                    ]);
-                }
-            }
-
-            DB::commit();
-
-            return response()->json(
-                $product->load(['category','productImages'])
-            );
-
-        } catch (\Exception $e) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
-            ],500);
-        }
-    }
-
     public function update(Request $request, Product $product)
     {
         $validated = $request->validate([
@@ -276,5 +226,74 @@ class ProductController extends Controller
         $product->save();
 
         return ApiResponse::success($product, "Product status updated successfully");
+    }
+    public function export(Request $request)
+    {
+        $filters = [
+            'search' => $request->search,
+            'category' => $request->category,
+            'min_price' => $request->min_price,
+            'max_price' => $request->max_price,
+            'sort_by' => $request->sort_by,
+            'sort_dir' => $request->sort_dir,
+        ];
+
+        return Excel::download(new ProductsExport($filters), 'products.xlsx');
+    }
+
+    public function demoSheet()
+    {
+        $data = collect([
+            ['Name','Price','Category','Status'],
+            ['iPhone 15',1000,'Electronics','active'],
+            ['Samsung TV',700,'Electronics','active'],
+        ]);
+
+        return Excel::download(new class($data) implements \Maatwebsite\Excel\Concerns\FromCollection {
+
+            private $data;
+
+            public function __construct($data)
+            {
+                $this->data = $data;
+            }
+
+            public function collection()
+            {
+                return $this->data;
+            }
+
+        }, 'product_demo.xlsx');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls'
+        ]);
+
+        $rows = Excel::toArray([], $request->file('file'))[0];
+
+        unset($rows[0]); // remove header
+
+        foreach ($rows as $row) {
+
+            $category = Category::where('name',$row[2])->first();
+
+            if (!$category) {
+                $category = Category::create([
+                    'name' => $row[2]
+                ]);
+            }
+
+            Product::create([
+                'name' => $row[0],
+                'price' => $row[1],
+                'category_id' => $category?->id,
+                'status' => $row[3] ?? 'active',
+            ]);
+        }
+
+        return ApiResponse::success([], "Products imported successfully");
     }
 }
