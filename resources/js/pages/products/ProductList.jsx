@@ -1,6 +1,6 @@
 import { useEffect, useState,  } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { getProducts, deleteProduct, updatedProductStatus, exportProducts } from "../../src/services/productServices";
+import { getProducts, deleteProduct, updatedProductStatus, exportProducts, importProducts } from "../../src/services/productServices";
 import { getAllActiveCategories } from "../../src/services/categoryService";
 import DataTable from "react-data-table-component";
 import usePageTitle from "../../hooks/usePageTitle";

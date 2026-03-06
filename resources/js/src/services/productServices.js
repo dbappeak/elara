@@ -32,7 +32,7 @@ export const exportProducts = (filters) => {
 };
 
 export const importProducts = (formData) => {
-    return API.post("/products/import", formData, {
+    return API.post("/product-import", formData, {
         headers: {
             "Content-Type": "multipart/form-data",
         },

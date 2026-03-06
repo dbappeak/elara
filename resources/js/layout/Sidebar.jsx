@@ -19,7 +19,7 @@ function Sidebar() {
             <h2 className="text-xl font-bold mb-6">Admin Panel</h2>
 
             <nav className="space-y-2">
-                <Link to="/" className={linkClass("/")}>
+                <Link to="/" className={linkClass("/dashboard")}>
                     Dashboard
                 </Link>
 

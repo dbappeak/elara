@@ -244,9 +244,9 @@ class ProductController extends Controller
     public function demoSheet()
     {
         $data = collect([
-            ['Name','Price','Category','Status'],
-            ['iPhone 15',1000,'Electronics','active'],
-            ['Samsung TV',700,'Electronics','active'],
+            ['Name','Price','Category','Status','Description', 'Quantity'],
+            ['iPhone 15',1000,'Electronics','active','A smart phone', 10],
+            ['Samsung TV',700,'Electronics','active','A smart TV', 5],
         ]);
 
         return Excel::download(new class($data) implements \Maatwebsite\Excel\Concerns\FromCollection {
@@ -286,12 +286,31 @@ class ProductController extends Controller
                 ]);
             }
 
-            Product::create([
-                'name' => $row[0],
-                'price' => $row[1],
-                'category_id' => $category?->id,
-                'status' => $row[3] ?? 'active',
-            ]);
+            // if slug available then update else create
+            if (Product::where('slug', Str::slug($row[0]))->exists()) {
+                Product::where('slug', Str::slug($row[0]))->update([
+                    'name' => $row[0],
+                    'description' => $row[4] ?? '',
+                    'price' => $row[1],
+                    'quantity' => $row[5] ?? 0,
+                    'category_id' => $category?->id,
+                    'status' => $row[3] ?? 'active',
+                    'slug' => Str::slug($row[0]),
+                ]);
+                continue;
+            } else {
+                Product::create([
+                    'name' => $row[0],
+                    'description' => $row[4] ?? '',
+                    'price' => $row[1],
+                    'quantity' => $row[5] ?? 0,
+                    'category_id' => $category?->id,
+                    'status' => $row[3] ?? 'active',
+                    'slug' => Str::slug($row[0]),
+                ]);
+            }
+
+            
         }
 
         return ApiResponse::success([], "Products imported successfully");
