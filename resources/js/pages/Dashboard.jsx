@@ -1,4 +1,6 @@
+import usePageTitle from "../hooks/usePageTitle";
 function Dashboard() {
+    usePageTitle("Dashboard");
     return (
         <div className="bg-white p-6 rounded shadow">
             <h1 className="text-2xl font-bold">
